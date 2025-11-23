@@ -2,462 +2,573 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sensei Bot</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Marked.js -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOCX to PDF Converter & AI Assistant</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Mammoth.js for DOCX text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <!-- Markdown parser for AI response -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=JetBrains+Mono:wght@400&display=swap');
-
-        :root {
-            --primary: #6366f1; /* Indigo 500 */
-            --secondary: #a855f7; /* Purple 500 */
-            --bg-dark: #0f172a; /* Slate 900 */
-            --card-bg: rgba(30, 41, 59, 0.75);
-        }
-
         body {
-            font-family: 'Outfit', sans-serif;
-            /* Futuristic AI Gradient Background */
-            background: radial-gradient(circle at top left, #1e1b4b, #0f172a);
-            background-attachment: fixed;
-            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            /* Background is now handled by the .aesthetic-bg div below */
         }
 
-        /* Subtle grid overlay */
-        body::after {
-            content: "";
+        /* --- PERFECTLY CENTERED BACKGROUND SLOT --- */
+        .aesthetic-bg {
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: 
-                linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
-            background-size: 30px 30px;
-            z-index: -1;
-            pointer-events: none;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Behind everything */
+
+            /* PASTE YOUR IMAGE URL HERE */
+            background-image: url('anime-moon-landscape.jpg');
+            
+            /* Positioning & Sizing */
+            background-position: center center;
+            background-size: cover;
+            background-repeat: no-repeat;
+            
+            /* Anime Aesthetic Effects */
+            filter: blur(3px) brightness(0.95); /* Dreamy blur */
+            transform: scale(1.05); /* Slight zoom to hide blurred edges */
         }
 
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
-
-        /* Animations */
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
+        .main-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
         }
-        .message-enter { animation: fadeUp 0.4s ease-out forwards; }
-
-        /* Typing Pulse */
-        .typing-dot { animation: pulse 1.4s infinite ease-in-out both; }
-        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes pulse {
-            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
-            40% { transform: scale(1); opacity: 1; }
-        }
-
-        /* Markdown Styles */
-        .prose strong { color: #a5b4fc; }
-        .prose a { color: #818cf8; text-decoration: none; border-bottom: 1px dashed #818cf8; }
-        .prose code { 
-            font-family: 'JetBrains Mono', monospace;
-            color: #e2e8f0; 
-            background: rgba(0,0,0,0.3); 
-            border-radius: 4px; 
-            padding: 2px 4px; 
-            font-size: 0.9em;
-        }
-        .prose pre { 
-            background: #020617 !important; 
-            border: 1px solid #1e293b; 
-            border-radius: 8px;
-            margin: 10px 0;
-        }
-
-        /* Glassmorphism Utils */
-        .glass {
-            background: var(--card-bg);
+        .card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            width: 100%;
+            max-width: 700px;
+            overflow: hidden;
+            /* Glassmorphism for the card to blend with background */
+            background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        .card-header {
+            background: rgba(52, 143, 235, 1.0);
+
+            color: white;
+            padding: 1.5rem;
+            border: none;
+            position: relative;
+        }
+        .upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            background: rgba(255, 255, 255, 0.6);
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #4a90e2;
+            background-color: rgba(74, 144, 226, 0.1);
+        }
+        .upload-area i {
+            font-size: 3rem;
+            color: #adb5bd;
+            margin-bottom: 1rem;
+        }
+        .file-info {
+            display: none;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: rgba(233, 236, 239, 0.8);
+            border-radius: 0.5rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+        #fileInput {
+            display: none;
+        }
+        .status-message {
+            margin-top: 1rem;
+            display: none;
+        }
+        .progress {
+            height: 6px;
+            display: none;
+            margin-top: 1rem;
+        }
+        /* Spinner styling */
+        .spinner-overlay {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        /* AI Section Styles */
+        .ai-section {
+            background-color: rgba(240, 247, 255, 0.7);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            display: none;
+            border: 1px solid rgba(207, 226, 255, 0.8);
+        }
+        .ai-result-box {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            border: 1px solid #dee2e6;
+            font-size: 0.95rem;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+        .ai-btn-group .btn {
+            font-size: 0.9rem;
+        }
+        /* Markdown styles */
+        .ai-result-box p:last-child { margin-bottom: 0; }
+        .ai-result-box ul { padding-left: 1.2rem; }
+        
+        .api-badge {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 50px;
+            padding: 5px 15px;
+            font-size: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .navbar {
+            background: rgba(255, 255, 255, 0.8) !important;
+            backdrop-filter: blur(10px);
         }
     </style>
 </head>
+<body>
 
-<body class="h-[100dvh] w-full overflow-hidden flex items-center justify-center">
+    <!-- AESTHETIC BACKGROUND SLOT -->
+    <div class="aesthetic-bg"></div>
 
-    <!-- Main App Window -->
-    <div class="w-full h-full md:h-[85vh] md:max-w-3xl glass md:rounded-3xl shadow-2xl flex flex-col relative overflow-hidden ring-1 ring-white/10">
-        
-        <!-- Header -->
-                <header class="h-16 bg-slate-900/50 border-b border-white/5 flex items-center justify-between px-5 z-20 flex-shrink-0">
-            <div class="flex items-center gap-3">
-                
-                <div class="w-9 h-9 rounded-lg shadow-lg shadow-indigo-500/20 overflow-hidden bg-slate-800">
-                    <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg05A5mOKl4mieQthce_XNCn0TxLlE5To70mNCjcVkjzub6Z0zNmQdYEGnNA6_igxqiM994si1OrI036DQse79Cot9hMok1TSFX2UO8p5LJ1LjPXZ2SVMGaCjweGlgh3PTbb7Gw_denPqGlUwdJlA4C4EfWhl0-3_KmGhVj_x_-8UHBBkBTK5S8TkCqAhh4/s1280/8bab0193-44f3-4d1a-bd00-f65780cf259d-1_all_503.jpg" alt="Logo" class="w-full h-full object-cover">
+    <!-- Navbar -->
+    <nav class="navbar navbar-light shadow-sm">
+        <div class="container">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-file-earmark-pdf-fill text-danger fs-2"></i>
+                <div class="d-flex flex-column">
+                    <span class="fw-bold h5 mb-0">Docx to PDF & AI</span>
+                    <small class="text-muted" style="font-size: 0.8rem;">Created by Osaid Ur Rehman</small>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="card">
+            <div class="card-header text-center">
+                <h4 class="mb-0 fw-bold">Convert Docx to PDF</h4>
+                <p class="mb-0 opacity-75 small">Convert DOCX to PDF or analyze with Gemini AI</p>
+                <div class="api-badge">
+                    <i class="bi bi-check-circle-fill me-2"></i> API Connected
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <!-- Upload Area -->
+                <div class="upload-area" id="dropZone">
+                    <i class="bi bi-cloud-arrow-up"></i>
+                    <h5 class="fw-bold text-secondary">Drag & Drop DOCX here</h5>
+                    <p class="text-muted small mb-0">or click to browse files</p>
+                    <input type="file" id="fileInput" accept=".docx,.doc">
                 </div>
 
-                <div>
-                    <h1 class="font-semibold text-lg tracking-tight text-white leading-tight">Sensei Bot</h1>
-                    <div class="flex items-center gap-1.5">
-                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                        <span class="text-[10px] text-slate-400 uppercase tracking-wider font-medium">Developed by Osaid Ur Rehman</span>
+                <!-- Selected File Info -->
+                <div class="file-info" id="fileInfo">
+                    <div class="d-flex align-items-center gap-2 overflow-hidden">
+                        <i class="bi bi-file-earmark-word-fill text-primary lead"></i>
+                        <span class="text-truncate fw-medium" id="fileName">filename.docx</span>
+                        <span class="badge bg-secondary rounded-pill ms-2" id="fileSize">0 KB</span>
+                    </div>
+                    <button type="button" class="btn-close small" aria-label="Remove" id="removeFile"></button>
+                </div>
+
+                <!-- AI Section -->
+                <div id="aiSection" class="ai-section">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-stars"></i> Ask Gemini AI</h6>
+                    <p class="small text-muted mb-3">Analyze the content of your DOCX file before converting.</p>
+                    
+                    <div class="d-flex flex-wrap gap-2 ai-btn-group">
+                        <button class="btn btn-outline-primary btn-sm" onclick="askGemini('summarize')">
+                            ✨ Summarize
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="askGemini('insights')">
+                            ✨ Key Insights
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="askGemini('email')">
+                            ✨ Draft Email
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="askGemini('simplify')">
+                            ✨ Simplify (ELI5)
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="askGemini('quiz')">
+                            ✨ Generate Quiz
+                        </button>
+                    </div>
+
+                    <div id="aiLoading" class="mt-3 d-none text-muted small">
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        Gemini is thinking...
+                    </div>
+
+                    <div id="aiResult" class="ai-result-box">
+                        <!-- AI Output goes here -->
                     </div>
                 </div>
-            </div>
-            
-            <div class="flex items-center gap-2">
-                <button onclick="clearChat()" class="w-8 h-8 rounded-full hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-red-400 transition" title="Clear History">
-                    <i class="fa-solid fa-trash-can text-sm"></i>
-                </button>
-                <button id="settings-btn" class="w-8 h-8 rounded-full hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition" title="Settings">
-                    <i class="fa-solid fa-gear text-sm"></i>
-                </button>
-            </div>
-        </header>
 
-        <!-- Settings Modal -->
-        <div id="api-key-modal" class="hidden absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-6 backdrop-blur-sm transition-opacity">
-            <div class="bg-slate-900 border border-indigo-500/30 rounded-2xl p-6 w-full max-w-md shadow-2xl relative overflow-hidden">
-                <!-- Decorative gradient blob -->
-                <div class="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
-
-                <h2 class="text-xl font-bold mb-2 text-white">API Configuration</h2>
-                <p class="text-xs text-slate-400 mb-5">A system key is pre-loaded (hidden). You can override it below if needed.</p>
-                
-                <div class="relative mb-5">
-                    <i class="fa-solid fa-key absolute left-3 top-3.5 text-slate-500 text-sm"></i>
-                    <input type="password" id="user-api-key" placeholder="Using System Key (Hidden)" class="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-sm text-white transition-all placeholder-slate-500">
+                <!-- PDF Conversion Progress Bar -->
+                <div class="progress" id="progressBar">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 100%"></div>
                 </div>
 
-                <div class="flex justify-end gap-3">
-                    <button onclick="closeModal()" class="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white transition">Cancel</button>
-                    <button onclick="saveApiKey()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition shadow-lg shadow-indigo-500/25">Save Override</button>
+                <!-- Action Buttons -->
+                <div class="d-grid gap-2 mt-4">
+                    <button class="btn btn-primary btn-lg" id="convertBtn" disabled>
+                        <span class="spinner-overlay" id="btnSpinner">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            Converting...
+                        </span>
+                        <span id="btnText">Convert to PDF</span>
+                    </button>
+                </div>
+
+                <!-- Status Messages -->
+                <div id="statusMessage" class="alert mt-3 status-message" role="alert"></div>
+
+                <!-- Result Section -->
+                <div id="resultSection" class="mt-3 d-none text-center p-3 bg-light rounded border border-success">
+                    <i class="bi bi-check-circle-fill text-success fs-1 mb-2"></i>
+                    <h5 class="fw-bold">Conversion Successful!</h5>
+                    <p class="text-muted small">Your file is ready for download.</p>
+                    <a href="#" id="downloadLink" class="btn btn-success w-100 shadow-sm" target="_blank">
+                        <i class="bi bi-download me-2"></i>Download PDF
+                    </a>
+                </div>
+
+            </div>
+            <div class="card-footer bg-light text-center py-3" style="background: rgba(248, 249, 250, 0.8) !important;">
+                <div class="d-flex flex-column gap-1">
+                    <small class="text-muted">Powered by ConvertAPI & Gemini Itegrated</small>
+                    <small class="text-primary fw-bold">Created by Osaid Ur Rehman 🇵🇰</small>
                 </div>
             </div>
         </div>
-
-        <!-- Chat Container -->
-        <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth relative">
-            
-            <!-- Empty State / Welcome -->
-            <div id="welcome-screen" class="h-full flex flex-col items-center justify-center text-center p-6 opacity-80">
-                <div class="w-16 h-16 rounded-2xl bg-slate-800/50 border border-white/5 flex items-center justify-center mb-4 shadow-xl">
-                    <i class="fa-solid fa-robot text-3xl text-indigo-400"></i>
-                </div>
-                <h3 class="text-xl font-semibold text-white mb-2">Hello, I'm Sensei.</h3>
-                <p class="text-sm text-slate-400 max-w-xs mb-8">I can help you write code, plan ideas, or learn something new.</p>
-                
-                <!-- Quick Prompts -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md">
-                    <button onclick="usePrompt('Explain Quantum Physics simply')" class="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-left transition group">
-                        <div class="text-xs font-medium text-indigo-300 mb-1 group-hover:text-indigo-200">Explain</div>
-                        <div class="text-xs text-slate-400">Quantum Physics simply</div>
-                    </button>
-                    <button onclick="usePrompt('Write a Python script to scrape a website')" class="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-left transition group">
-                        <div class="text-xs font-medium text-purple-300 mb-1 group-hover:text-purple-200">Code</div>
-                        <div class="text-xs text-slate-400">Python scraping script</div>
-                    </button>
-                    <button onclick="usePrompt('Give me 5 creative marketing ideas')" class="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-left transition group">
-                        <div class="text-xs font-medium text-emerald-300 mb-1 group-hover:text-emerald-200">Brainstorm</div>
-                        <div class="text-xs text-slate-400">Creative marketing ideas</div>
-                    </button>
-                    <button onclick="usePrompt('Write a haiku about robots')" class="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-left transition group">
-                        <div class="text-xs font-medium text-amber-300 mb-1 group-hover:text-amber-200">Creative</div>
-                        <div class="text-xs text-slate-400">Haiku about robots</div>
-                    </button>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Typing Indicator (Floating) -->
-        <div id="typing-indicator" class="hidden absolute bottom-20 left-6 z-10">
-            <div class="flex items-center gap-1 bg-slate-800/90 border border-white/10 px-3 py-2 rounded-full shadow-lg backdrop-blur-sm">
-                <div class="w-1.5 h-1.5 bg-indigo-400 rounded-full typing-dot"></div>
-                <div class="w-1.5 h-1.5 bg-indigo-400 rounded-full typing-dot"></div>
-                <div class="w-1.5 h-1.5 bg-indigo-400 rounded-full typing-dot"></div>
-            </div>
-        </div>
-
-        <!-- Input Area -->
-        <div class="p-4 bg-slate-900/80 border-t border-white/5 backdrop-blur-md z-20 flex-shrink-0">
-            <div class="flex items-end gap-2 relative max-w-3xl mx-auto">
-                <div class="flex-1 bg-slate-800/50 border border-white/10 rounded-2xl focus-within:border-indigo-500/50 focus-within:bg-slate-800 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all overflow-hidden flex items-center shadow-inner">
-                    <textarea 
-                        id="user-input" 
-                        rows="1" 
-                        placeholder="Message Sensei..." 
-                        class="w-full bg-transparent border-none focus:ring-0 resize-none py-3 px-4 max-h-32 text-sm text-slate-200 placeholder-slate-500 font-light leading-relaxed"
-                        oninput="adjustHeight(this)"
-                        onkeydown="handleEnter(event)"
-                    ></textarea>
-                </div>
-                <button 
-                    onclick="sendMessage()" 
-                    id="send-btn"
-                    class="h-11 w-11 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 flex items-center justify-center transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none mb-[1px]"
-                >
-                    <i class="fa-solid fa-paper-plane text-sm"></i>
-                </button>
-            </div>
-            <div class="text-center mt-2">
-                <p class="text-[10px] text-slate-600">Developed by Osaid Ur Rehman</p>
-            </div>
-        </div>
-
     </div>
 
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // --- Configuration ---
-        // KEY HIDDEN AND SPLIT
-        // We split the key so it's not easily searchable as a continuous string in the source.
-        const _p1 = "AIzaSyAAgmjn-Hum";
-        const _p2 = "XZQduf66pQCc-1ghWLwnVkM";
-        const systemApiKey = _p1 + _p2; 
+        // DOM Elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const removeFileBtn = document.getElementById('removeFile');
+        const convertBtn = document.getElementById('convertBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const progressBar = document.getElementById('progressBar');
+        const btnText = document.getElementById('btnText');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const resultSection = document.getElementById('resultSection');
+        const downloadLink = document.getElementById('downloadLink');
         
-        let userProvidedKey = localStorage.getItem('gemini_api_key') || "";
+        // AI DOM Elements
+        const aiSection = document.getElementById('aiSection');
+        const aiLoading = document.getElementById('aiLoading');
+        const aiResult = document.getElementById('aiResult');
 
-        const chatContainer = document.getElementById('chat-container');
-        const userInput = document.getElementById('user-input');
-        const sendBtn = document.getElementById('send-btn');
-        const typingIndicator = document.getElementById('typing-indicator');
-        const apiKeyModal = document.getElementById('api-key-modal');
-        const settingsBtn = document.getElementById('settings-btn');
-        const welcomeScreen = document.getElementById('welcome-screen');
+        let currentFile = null;
+        let extractedText = "";
         
-        let chatHistory = [];
+        // ---------------------------------------------------------
+        // 1. FOR AI FEATURES (Summarize, Email, etc.)
+        // NOTE: If running locally, paste your key inside the quotes below.
+        // If running in the preview environment, leave it empty.
+        const apiKey = "AIzaSyAeARvfTNkwyC4VGrS4_gWmA2l-wzeLieA"; 
+        // ---------------------------------------------------------
+        
+        // ---------------------------------------------------------
+        // 2. FOR PDF CONVERSION
+        // Your ConvertAPI Secret is already set below:
+        const convertApiSecret = "WOeP576vH1fbaVm9KuhntJzXlZQpc0vu"; 
+        // ---------------------------------------------------------
 
-        // --- Logic ---
+        // Drag and Drop Events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
 
-        function init() {
-            userInput.focus();
-            // We don't show the modal because systemApiKey exists (hidden)
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
         }
 
-        function adjustHeight(el) {
-            el.style.height = 'auto';
-            el.style.height = Math.min(el.scrollHeight, 128) + 'px';
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            dropZone.classList.add('dragover');
         }
 
-        function usePrompt(text) {
-            userInput.value = text;
-            adjustHeight(userInput);
-            sendMessage();
+        function unhighlight() {
+            dropZone.classList.remove('dragover');
         }
 
-        function clearChat() {
-            if(chatHistory.length === 0) return;
-            
-            if(confirm("Clear conversation history?")) {
-                chatHistory = [];
-                chatContainer.innerHTML = '';
-                chatContainer.appendChild(welcomeScreen);
-                welcomeScreen.classList.remove('hidden');
+        dropZone.addEventListener('drop', handleDrop, false);
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFiles);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length) handleFileSelection(files[0]);
+        }
+
+        function handleFiles() {
+            if (this.files.length) handleFileSelection(this.files[0]);
+        }
+
+        function handleFileSelection(file) {
+            if (!file.name.match(/\.(docx|doc)$/i)) {
+                showStatus('Please select a valid Word document (.docx or .doc)', 'danger');
+                return;
             }
-        }
 
-        function saveApiKey() {
-            const key = document.getElementById('user-api-key').value.trim();
-            if (key) {
-                userProvidedKey = key;
-                localStorage.setItem('gemini_api_key', key);
-                apiKeyModal.classList.add('hidden');
-                // Visual feedback
-                const btn = document.getElementById('settings-btn');
-                btn.style.color = '#4ade80'; // green
-                setTimeout(() => btn.style.color = '', 2000);
+            currentFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatBytes(file.size);
+            
+            // Show file info, hide upload area
+            fileInfo.style.display = 'flex';
+            dropZone.style.display = 'none';
+            resultSection.classList.add('d-none');
+            statusMessage.style.display = 'none';
+            
+            // Handle AI extraction for DOCX
+            if (file.name.match(/\.docx$/i)) {
+                extractTextFromDocx(file);
             } else {
-                localStorage.removeItem('gemini_api_key');
-                userProvidedKey = "";
-                apiKeyModal.classList.add('hidden');
-            }
-        }
-
-        function closeModal() {
-            apiKeyModal.classList.add('hidden');
-        }
-
-        settingsBtn.onclick = () => {
-            apiKeyModal.classList.remove('hidden');
-            const input = document.getElementById('user-api-key');
-            // Only show the key if the USER provided it. 
-            // If it's using the system key, show empty/placeholder to keep it hidden.
-            input.value = userProvidedKey; 
-        };
-
-        function handleEnter(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        }
-
-        async function sendMessage() {
-            const text = userInput.value.trim();
-            if (!text) return;
-
-            if (!welcomeScreen.classList.contains('hidden')) {
-                welcomeScreen.classList.add('hidden');
+                // .doc files cannot be parsed easily in browser
+                aiSection.style.display = 'none';
+                extractedText = "";
             }
 
-            addMessage(text, 'user');
-            userInput.value = '';
-            userInput.style.height = 'auto';
+            updateConvertButton();
+        }
+
+        function extractTextFromDocx(file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const arrayBuffer = event.target.result;
+                mammoth.extractRawText({arrayBuffer: arrayBuffer})
+                    .then(function(result){
+                        extractedText = result.value;
+                        // Only show AI section if text was actually found
+                        if (extractedText && extractedText.trim().length > 0) {
+                            aiSection.style.display = 'block';
+                            aiResult.style.display = 'none';
+                            aiResult.innerHTML = '';
+                        }
+                    })
+                    .done();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Gemini AI Logic
+        async function askGemini(type) {
+            // Check if user has added their key
+            if (!apiKey) {
+                 aiResult.innerHTML = `<div class="alert alert-warning small mb-0">
+                    <strong>Missing AI Key!</strong><br>
+                    To use AI features, please open the code and paste your Google Gemini API Key into the <code>apiKey</code> variable.
+                    <br><a href="https://aistudio.google.com/app/apikey" target="_blank">Get a free key here</a>
+                </div>`;
+                aiResult.style.display = 'block';
+                return;
+            }
+
+            if (!extractedText) return;
+
+            // UI Update
+            aiLoading.classList.remove('d-none');
+            aiResult.style.display = 'none';
             
-            showTyping(true);
-            sendBtn.disabled = true;
-
-            const historyPayload = chatHistory.map(msg => ({
-                role: msg.role === 'user' ? 'user' : 'model',
-                parts: [{ text: msg.text }]
-            }));
-            historyPayload.push({ role: 'user', parts: [{ text: text }] });
+            let prompt = "";
+            if (type === 'summarize') {
+                prompt = `Summarize the following document text in 3 clear, concise sentences:\n\n${extractedText.substring(0, 15000)}`;
+            } else if (type === 'insights') {
+                prompt = `Extract the top 5 key insights or bullet points from this document:\n\n${extractedText.substring(0, 15000)}`;
+            } else if (type === 'email') {
+                prompt = `Write a professional, polite short email draft to a colleague attaching this document. Briefly mention what the document is about based on this text:\n\n${extractedText.substring(0, 15000)}`;
+            } else if (type === 'simplify') {
+                prompt = `Explain the following document content like I am 5 years old. Keep it simple and fun:\n\n${extractedText.substring(0, 15000)}`;
+            } else if (type === 'quiz') {
+                prompt = `Generate 3 multiple-choice questions based on this document to test my understanding. Include the answers at the bottom:\n\n${extractedText.substring(0, 15000)}`;
+            }
 
             try {
-                const responseText = await callGeminiAPI(historyPayload);
-                
-                showTyping(false);
-                addMessage(responseText, 'ai');
-                
-                chatHistory.push({ role: 'user', text: text });
-                chatHistory.push({ role: 'ai', text: responseText });
+                const response = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }]
+                        })
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error('AI Request failed. Check API Key.');
+                }
+
+                const data = await response.json();
+                const aiText = data.candidates[0].content.parts[0].text;
+
+                // Render Markdown
+                aiResult.innerHTML = marked.parse(aiText);
+                aiResult.style.display = 'block';
 
             } catch (error) {
-                showTyping(false);
-                let errorMsg = "Connection failed.";
-                if(error.message.includes('429')) errorMsg = "Too many requests. Please wait a moment.";
-                else if(error.message.includes('400')) errorMsg = "Bad Request. Check your input.";
-                else errorMsg = "I couldn't reach the server. Check your internet.";
-                
-                addMessage(errorMsg, 'error');
+                console.error(error);
+                aiResult.innerHTML = `<div class="text-danger small">Failed to get AI response. Please check if your API key is correct.</div>`;
+                aiResult.style.display = 'block';
+            } finally {
+                aiLoading.classList.add('d-none');
+            }
+        }
+
+        removeFileBtn.addEventListener('click', resetFile);
+
+        function resetFile() {
+            currentFile = null;
+            extractedText = "";
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            aiSection.style.display = 'none';
+            dropZone.style.display = 'block';
+            convertBtn.disabled = true;
+            resultSection.classList.add('d-none');
+            progressBar.style.display = 'none';
+        }
+
+        function updateConvertButton() {
+            // Since API key is hardcoded, we only check for file
+            convertBtn.disabled = !currentFile;
+        }
+
+        // Format bytes to readable string
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = `alert alert-${type} status-message`;
+            statusMessage.style.display = 'block';
+        }
+
+        // PDF Conversion Logic (ConvertAPI)
+        convertBtn.addEventListener('click', async () => {
+            if (!currentFile) return;
+
+            // Simple validation for the hardcoded key
+            if (convertApiSecret === "YOUR_CONVERT_API_SECRET_HERE") {
+                showStatus('Configuration Error: Please open the code and add your ConvertAPI Secret to the "convertApiSecret" variable.', 'warning');
+                return;
+            }
+
+            const secret = convertApiSecret;
+            
+            // UI State: Loading
+            convertBtn.disabled = true;
+            btnText.style.display = 'none';
+            btnSpinner.style.display = 'flex';
+            progressBar.style.display = 'block';
+            statusMessage.style.display = 'none';
+            resultSection.classList.add('d-none');
+
+            try {
+                const formData = new FormData();
+                formData.append('File', currentFile);
+                formData.append('StoreFile', 'true'); // Required to get a URL back
+
+                // Call ConvertAPI
+                const response = await fetch(`https://v2.convertapi.com/convert/docx/to/pdf?Secret=${secret}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.Message || 'Conversion failed. Please check your API Key.');
+                }
+
+                // Success
+                if (data.Files && data.Files.length > 0) {
+                    const pdfUrl = data.Files[0].Url;
+                    downloadLink.href = pdfUrl;
+                    downloadLink.setAttribute('download', data.Files[0].FileName);
+                    
+                    resultSection.classList.remove('d-none');
+                    showStatus('File converted successfully!', 'success');
+                } else {
+                    throw new Error('No output file received from API.');
+                }
+
+            } catch (error) {
+                showStatus(error.message, 'danger');
                 console.error(error);
             } finally {
-                sendBtn.disabled = false;
-                userInput.focus();
+                // UI State: Reset
+                convertBtn.disabled = false;
+                btnText.style.display = 'inline';
+                btnSpinner.style.display = 'none';
+                progressBar.style.display = 'none';
             }
-        }
-
-        function addMessage(text, sender) {
-            const div = document.createElement('div');
-            const isUser = sender === 'user';
-            const isError = sender === 'error';
-            
-            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} message-enter w-full`;
-
-            const bubbleClass = isUser 
-                ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-sm shadow-lg shadow-indigo-500/10' 
-                : isError 
-                    ? 'bg-red-500/10 border border-red-500/50 text-red-200 rounded-2xl' 
-                    : 'bg-slate-800 border border-white/5 text-slate-300 rounded-2xl rounded-tl-sm shadow-lg';
-
-            const contentHTML = isUser 
-                ? `<p class="leading-relaxed">${escapeHtml(text)}</p>` 
-                : marked.parse(text);
-
-            const iconHTML = isUser 
-                ? '' 
-                : `<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg mr-3 mt-1 flex-shrink-0"><i class="fa-solid fa-brain text-xs text-white"></i></div>`;
-
-            const copyBtnHTML = (!isUser && !isError) 
-                ? `<button onclick="copyToClipboard(this)" class="absolute bottom-2 right-2 text-slate-500 hover:text-indigo-400 transition opacity-0 group-hover:opacity-100 p-1" title="Copy"><i class="fa-regular fa-copy text-xs"></i></button>` 
-                : '';
-
-            div.innerHTML = `
-                <div class="flex max-w-[90%] md:max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'} group relative">
-                    ${!isUser ? iconHTML : ''}
-                    <div class="relative ${bubbleClass} px-5 py-3.5 text-sm prose prose-invert max-w-none">
-                        ${contentHTML}
-                        ${copyBtnHTML}
-                    </div>
-                </div>
-            `;
-
-            chatContainer.appendChild(div);
-            scrollToBottom();
-        }
-
-        function copyToClipboard(btn) {
-            const text = btn.parentElement.innerText;
-            navigator.clipboard.writeText(text).then(() => {
-                const originalIcon = btn.innerHTML;
-                btn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i>';
-                setTimeout(() => btn.innerHTML = originalIcon, 1500);
-            });
-        }
-
-        function showTyping(show) {
-            const indicator = document.getElementById('typing-indicator');
-            if (show) {
-                indicator.classList.remove('hidden');
-                scrollToBottom();
-            } else {
-                indicator.classList.add('hidden');
-            }
-        }
-
-        function scrollToBottom() {
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-
-        function escapeHtml(text) {
-            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-        }
-
-        async function callGeminiAPI(contents) {
-            const apiKey = userProvidedKey || systemApiKey;
-            if (!apiKey) throw new Error("No API Key");
-
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            
-            const payload = {
-                contents: contents,
-                generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 1000,
-                }
-            };
-
-            return await fetchWithBackoff(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-        }
-
-        async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
-            try {
-                const response = await fetch(url, options);
-                if (!response.ok) {
-                    if (response.status === 429 && retries > 0) {
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        return fetchWithBackoff(url, options, retries - 1, delay * 2);
-                    }
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                return data.candidates[0].content.parts[0].text;
-            } catch (error) {
-                if (retries > 0) {
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    return fetchWithBackoff(url, options, retries - 1, delay * 2);
-                }
-                throw error;
-            }
-        }
-
-        init();
+        });
     </script>
 </body>
 </html>
-
-
