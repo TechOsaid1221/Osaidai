@@ -24,7 +24,7 @@
             width: 100%;
             height: 100%;
             z-index: -1;
-            background-image: url('anime-moon-landscape.jpg'); /* Ensure you have this image */
+            background-image: url('anime-moon-landscape.webp'); /* Ensure you have this image */
             background-position: center center;
             background-size: cover;
             background-repeat: no-repeat;
@@ -351,339 +351,348 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // ==========================================
-        // CONFIGURATION (Shared)
-        // ==========================================
-        const GEMINI_API_KEY = ""; // Use default environment key
-        const CONVERT_API_SECRET = "WOeP576vH1fbaVm9KuhntJzXlZQpc0vu"; 
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // ==========================================
+    // CONFIGURATION (Shared)
+    // ==========================================
+    // **CRITICAL SECURITY FIX:**
+    // Gemini API Key is removed and will be securely accessed by Netlify Functions.
+    const CONVERT_API_SECRET = "WOeP576vH1fbaVm9KuhntJzXlZQpc0vu"; 
 
-        // ==========================================
-        // TOOL 1: DOCX LOGIC
-        // ==========================================
-        const docxDropZone = document.getElementById('docxDropZone');
-        const docxInput = document.getElementById('docxInput');
-        const docxFileInfo = document.getElementById('docxFileInfo');
-        const docxFileName = document.getElementById('docxFileName');
-        const docxFileSize = document.getElementById('docxFileSize');
-        const docxRemoveFile = document.getElementById('docxRemoveFile');
-        const docxConvertBtn = document.getElementById('docxConvertBtn');
-        const docxAiSection = document.getElementById('docxAiSection');
-        const docxAiLoading = document.getElementById('docxAiLoading');
-        const docxAiResult = document.getElementById('docxAiResult');
+    // ==========================================
+    // TOOL 1: DOCX LOGIC
+    // ==========================================
+    const docxDropZone = document.getElementById('docxDropZone');
+    const docxInput = document.getElementById('docxInput');
+    const docxFileInfo = document.getElementById('docxFileInfo');
+    const docxFileName = document.getElementById('docxFileName');
+    const docxFileSize = document.getElementById('docxFileSize');
+    const docxRemoveFile = document.getElementById('docxRemoveFile');
+    const docxConvertBtn = document.getElementById('docxConvertBtn');
+    const docxAiSection = document.getElementById('docxAiSection');
+    const docxAiLoading = document.getElementById('docxAiLoading');
+    const docxAiResult = document.getElementById('docxAiResult');
+    
+    // PDF Convert Elements
+    const statusMessage = document.getElementById('statusMessage');
+    const progressBar = document.getElementById('progressBar');
+    const btnText = document.getElementById('btnText');
+    const btnSpinner = document.getElementById('btnSpinner');
+    const resultSection = document.getElementById('resultSection');
+    const downloadLink = document.getElementById('downloadLink');
+
+    let currentDocxFile = null;
+    let extractedText = "";
+
+    // Docx Event Listeners
+    docxDropZone.addEventListener('click', () => docxInput.click());
+    docxInput.addEventListener('change', handleDocxFiles);
+    docxDropZone.addEventListener('dragover', (e) => { e.preventDefault(); docxDropZone.classList.add('dragover'); });
+    docxDropZone.addEventListener('dragleave', () => docxDropZone.classList.remove('dragover'));
+    docxDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        docxDropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleDocxSelection(e.dataTransfer.files[0]);
+    });
+    docxRemoveFile.addEventListener('click', resetDocx);
+
+    function handleDocxFiles() {
+        if (this.files.length) handleDocxSelection(this.files[0]);
+    }
+
+    function handleDocxSelection(file) {
+        if (!file.name.match(/\.(docx|doc)$/i)) {
+            showStatus('Please select a valid Word document (.docx or .doc)', 'danger');
+            return;
+        }
+        currentDocxFile = file;
+        docxFileName.textContent = file.name;
+        docxFileSize.textContent = formatBytes(file.size);
         
-        // PDF Convert Elements
-        const statusMessage = document.getElementById('statusMessage');
-        const progressBar = document.getElementById('progressBar');
-        const btnText = document.getElementById('btnText');
-        const btnSpinner = document.getElementById('btnSpinner');
-        const resultSection = document.getElementById('resultSection');
-        const downloadLink = document.getElementById('downloadLink');
+        docxFileInfo.style.display = 'flex';
+        docxDropZone.style.display = 'none';
+        resultSection.classList.add('d-none');
+        statusMessage.style.display = 'none';
 
-        let currentDocxFile = null;
-        let extractedText = "";
-
-        // Docx Event Listeners
-        docxDropZone.addEventListener('click', () => docxInput.click());
-        docxInput.addEventListener('change', handleDocxFiles);
-        docxDropZone.addEventListener('dragover', (e) => { e.preventDefault(); docxDropZone.classList.add('dragover'); });
-        docxDropZone.addEventListener('dragleave', () => docxDropZone.classList.remove('dragover'));
-        docxDropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            docxDropZone.classList.remove('dragover');
-            if (e.dataTransfer.files.length) handleDocxSelection(e.dataTransfer.files[0]);
-        });
-        docxRemoveFile.addEventListener('click', resetDocx);
-
-        function handleDocxFiles() {
-            if (this.files.length) handleDocxSelection(this.files[0]);
-        }
-
-        function handleDocxSelection(file) {
-            if (!file.name.match(/\.(docx|doc)$/i)) {
-                showStatus('Please select a valid Word document (.docx or .doc)', 'danger');
-                return;
-            }
-            currentDocxFile = file;
-            docxFileName.textContent = file.name;
-            docxFileSize.textContent = formatBytes(file.size);
-            
-            docxFileInfo.style.display = 'flex';
-            docxDropZone.style.display = 'none';
-            resultSection.classList.add('d-none');
-            statusMessage.style.display = 'none';
-
-            if (file.name.match(/\.docx$/i)) {
-                extractTextFromDocx(file);
-            } else {
-                docxAiSection.style.display = 'none';
-                extractedText = "";
-            }
-            docxConvertBtn.disabled = false;
-        }
-
-        function extractTextFromDocx(file) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                mammoth.extractRawText({arrayBuffer: event.target.result})
-                    .then(function(result){
-                        extractedText = result.value;
-                        if (extractedText && extractedText.trim().length > 0) {
-                            docxAiSection.style.display = 'block';
-                            docxAiResult.style.display = 'none';
-                            docxAiResult.innerHTML = '';
-                        }
-                    }).done();
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function resetDocx() {
-            currentDocxFile = null;
-            extractedText = "";
-            docxInput.value = '';
-            docxFileInfo.style.display = 'none';
+        if (file.name.match(/\.docx$/i)) {
+            extractTextFromDocx(file);
+        } else {
             docxAiSection.style.display = 'none';
-            docxDropZone.style.display = 'block';
-            docxConvertBtn.disabled = true;
-            resultSection.classList.add('d-none');
-            progressBar.style.display = 'none';
-            statusMessage.style.display = 'none';
+            extractedText = "";
         }
+        docxConvertBtn.disabled = false;
+    }
 
-        // ConvertAPI Logic
-        docxConvertBtn.addEventListener('click', async () => {
-            if (!currentDocxFile) return;
-            
-            docxConvertBtn.disabled = true;
-            btnText.style.display = 'none';
-            btnSpinner.style.display = 'flex';
-            progressBar.style.display = 'block';
-            statusMessage.style.display = 'none';
-            resultSection.classList.add('d-none');
+    function extractTextFromDocx(file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            mammoth.extractRawText({arrayBuffer: event.target.result})
+                .then(function(result){
+                    extractedText = result.value;
+                    if (extractedText && extractedText.trim().length > 0) {
+                        docxAiSection.style.display = 'block';
+                        docxAiResult.style.display = 'none';
+                        docxAiResult.innerHTML = '';
+                    }
+                }).done();
+        };
+        reader.readAsArrayBuffer(file);
+    }
 
-            try {
-                const formData = new FormData();
-                formData.append('File', currentDocxFile);
-                formData.append('StoreFile', 'true');
+    function resetDocx() {
+        currentDocxFile = null;
+        extractedText = "";
+        docxInput.value = '';
+        docxFileInfo.style.display = 'none';
+        docxAiSection.style.display = 'none';
+        docxDropZone.style.display = 'block';
+        docxConvertBtn.disabled = true;
+        resultSection.classList.add('d-none');
+        progressBar.style.display = 'none';
+        statusMessage.style.display = 'none';
+    }
 
-                const response = await fetch(`https://v2.convertapi.com/convert/docx/to/pdf?Secret=${CONVERT_API_SECRET}`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-
-                if (!response.ok) throw new Error(data.Message || 'Conversion failed.');
-
-                if (data.Files && data.Files.length > 0) {
-                    downloadLink.href = data.Files[0].Url;
-                    downloadLink.setAttribute('download', data.Files[0].FileName);
-                    resultSection.classList.remove('d-none');
-                    showStatus('File converted successfully!', 'success');
-                } else {
-                    throw new Error('No output file received.');
-                }
-            } catch (error) {
-                showStatus(error.message, 'danger');
-            } finally {
-                docxConvertBtn.disabled = false;
-                btnText.style.display = 'inline';
-                btnSpinner.style.display = 'none';
-                progressBar.style.display = 'none';
-            }
-        });
-
-        // Gemini Logic for DOCX
-        async function askGeminiDocx(type) {
-            if (!extractedText) return;
-            docxAiLoading.classList.remove('d-none');
-            docxAiResult.style.display = 'none';
-            
-            let prompt = "";
-            const textSample = extractedText.substring(0, 15000);
-            if (type === 'summarize') prompt = `Summarize this in 3 clear sentences:\n\n${textSample}`;
-            else if (type === 'insights') prompt = `Extract 5 key bullet points:\n\n${textSample}`;
-            else if (type === 'email') prompt = `Write a short email draft attaching this doc:\n\n${textSample}`;
-            else if (type === 'quiz') prompt = `Create 3 multiple choice questions with answers:\n\n${textSample}`;
-
-            try {
-                const text = await callGeminiRaw(prompt);
-                docxAiResult.innerHTML = marked.parse(text);
-                docxAiResult.style.display = 'block';
-            } catch (error) {
-                docxAiResult.innerHTML = `<div class="text-danger small">Error: ${error.message}</div>`;
-                docxAiResult.style.display = 'block';
-            } finally {
-                docxAiLoading.classList.add('d-none');
-            }
-        }
-
-        // ==========================================
-        // TOOL 2: IMAGE TO JSON LOGIC
-        // ==========================================
-        const imgDropZone = document.getElementById('imgDropZone');
-        const imgInput = document.getElementById('imgInput');
-        const imgPreviewSection = document.getElementById('imgPreviewSection');
-        const imagePreview = document.getElementById('imagePreview');
-        const imgRemoveFile = document.getElementById('imgRemoveFile');
-        const imgAnalyzeBtn = document.getElementById('imgAnalyzeBtn');
-        const imgResultSection = document.getElementById('imgResultSection');
-        const jsonOutput = document.getElementById('jsonOutput');
-        const copyJsonBtn = document.getElementById('copyJsonBtn');
-        const imgSpinner = document.getElementById('imgSpinner');
-
-        let currentBase64 = null;
-        let currentMimeType = null;
-        let generatedJson = null;
-
-        // Image Event Listeners
-        imgDropZone.addEventListener('click', () => imgInput.click());
-        imgDropZone.addEventListener('dragover', (e) => { e.preventDefault(); imgDropZone.classList.add('dragover'); });
-        imgDropZone.addEventListener('dragleave', () => imgDropZone.classList.remove('dragover'));
-        imgDropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            imgDropZone.classList.remove('dragover');
-            if (e.dataTransfer.files.length) handleImageFile(e.dataTransfer.files[0]);
-        });
-        imgInput.addEventListener('change', (e) => {
-            if (e.target.files.length) handleImageFile(e.target.files[0]);
-        });
-        imgRemoveFile.addEventListener('click', resetImage);
-        imgAnalyzeBtn.addEventListener('click', analyzeImageWithAI);
-
-        copyJsonBtn.addEventListener('click', () => {
-            if (!generatedJson) return;
-            navigator.clipboard.writeText(JSON.stringify(generatedJson, null, 2));
-            const originalHtml = copyJsonBtn.innerHTML;
-            copyJsonBtn.innerHTML = '<i class="bi bi-check2"></i> Copied';
-            setTimeout(() => copyJsonBtn.innerHTML = originalHtml, 2000);
-        });
-
-        function handleImageFile(file) {
-            if (!file.type.startsWith('image/')) {
-                alert('Please select a valid image.');
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                currentBase64 = e.target.result.split(',')[1];
-                currentMimeType = file.type;
-                imagePreview.src = e.target.result;
-                
-                imgDropZone.style.display = 'none';
-                imgPreviewSection.classList.remove('d-none');
-                imagePreview.style.display = 'inline-block';
-                imgResultSection.classList.add('d-none');
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function resetImage() {
-            currentBase64 = null;
-            imgInput.value = '';
-            imgPreviewSection.classList.add('d-none');
-            imgDropZone.style.display = 'block';
-            imgResultSection.classList.add('d-none');
-        }
-
-        async function analyzeImageWithAI() {
-            const apiKey = "AIzaSyAAgmjn-HumXZQduf66pQCc-1ghWLwnVkM";
-            if (!apiKey) {
-               // Fallback if no key in env (handled by immersive)
-            }
-            
-            imgAnalyzeBtn.disabled = true;
-            imgSpinner.classList.remove('d-none');
-            
-            const prompt = `Analyze this image and return a strictly valid JSON object. 
-            Schema: { "type": "image", "subject": "string", "color": "string", "mood": "string", "details": { "features": ["string"], "location": "string" } }`;
-
-            try {
-                // Helper for image API call
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: prompt },
-                                { inline_data: { mime_type: currentMimeType, data: currentBase64 } }
-                            ]
-                        }]
-                    })
-                });
-
-                if (!response.ok) throw new Error('AI Request failed');
-                const data = await response.json();
-                const rawText = data.candidates[0].content.parts[0].text;
-                
-                let cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-                try {
-                    generatedJson = JSON.parse(cleanJson);
-                    jsonOutput.innerHTML = syntaxHighlight(generatedJson);
-                } catch (e) {
-                    jsonOutput.textContent = rawText; // Fallback to raw text
-                }
-                
-                imgResultSection.classList.remove('d-none');
-            } catch (error) {
-                // Retry or show error
-                console.error(error);
-                alert("AI Analysis Error (Check Console/API Key)");
-            } finally {
-                imgAnalyzeBtn.disabled = false;
-                imgSpinner.classList.add('d-none');
-            }
-        }
-
-        // ==========================================
-        // HELPERS (Shared)
-        // ==========================================
+    // ConvertAPI Logic
+    docxConvertBtn.addEventListener('click', async () => {
+        if (!currentDocxFile) return;
         
-        // Shared Gemini Text Call (for DOCX)
-        async function callGeminiRaw(prompt) {
-            const apiKey = "AIzaSyAAgmjn-HumXZQduf66pQCc-1ghWLwnVkM";
-            const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                }
-            );
-            if (!response.ok) throw new Error('AI request failed.');
-            const data = await response.json();
-            return data.candidates[0].content.parts[0].text;
-        }
+        docxConvertBtn.disabled = true;
+        btnText.style.display = 'none';
+        btnSpinner.style.display = 'flex';
+        progressBar.style.display = 'block';
+        statusMessage.style.display = 'none';
+        resultSection.classList.add('d-none');
 
-        function formatBytes(bytes, decimals = 2) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals < 0 ? 0 : decimals)) + ' ' + sizes[i];
-        }
+        try {
+            const formData = new FormData();
+            formData.append('File', currentDocxFile);
+            formData.append('StoreFile', 'true');
 
-        function showStatus(message, type) {
-            statusMessage.textContent = message;
-            statusMessage.className = `alert alert-${type} status-message`;
-            statusMessage.style.display = 'block';
-        }
-
-        function syntaxHighlight(json) {
-            if (typeof json != 'string') json = JSON.stringify(json, undefined, 2);
-            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
-                var cls = 'number';
-                if (/^"/.test(match)) {
-                    if (/:$/.test(match)) cls = 'key';
-                    else cls = 'string';
-                } else if (/true|false/.test(match)) cls = 'boolean';
-                else if (/null/.test(match)) cls = 'null';
-                return '<span class="' + cls + '">' + match + '</span>';
+            const response = await fetch(`https://v2.convertapi.com/convert/docx/to/pdf?Secret=${CONVERT_API_SECRET}`, {
+                method: 'POST',
+                body: formData
             });
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.Message || 'Conversion failed.');
+
+            if (data.Files && data.Files.length > 0) {
+                downloadLink.href = data.Files[0].Url;
+                downloadLink.setAttribute('download', data.Files[0].FileName);
+                resultSection.classList.remove('d-none');
+                showStatus('File converted successfully!', 'success');
+            } else {
+                throw new Error('No output file received.');
+            }
+        } catch (error) {
+            showStatus(error.message, 'danger');
+        } finally {
+            docxConvertBtn.disabled = false;
+            btnText.style.display = 'inline';
+            btnSpinner.style.display = 'none';
+            progressBar.style.display = 'none';
         }
-    </script>
+    });
+
+    // Gemini Logic for DOCX (NOW CALLS NETLIFY FUNCTION)
+    async function askGeminiDocx(type) {
+        if (!extractedText) return;
+        docxAiLoading.classList.remove('d-none');
+        docxAiResult.style.display = 'none';
+        
+        let prompt = "";
+        const textSample = extractedText.substring(0, 15000); // Limit text size for API
+        if (type === 'summarize') prompt = `Summarize this in 3 clear sentences:\n\n${textSample}`;
+        else if (type === 'insights') prompt = `Extract 5 key bullet points:\n\n${textSample}`;
+        else if (type === 'email') prompt = `Write a short email draft attaching this doc:\n\n${textSample}`;
+        else if (type === 'quiz') prompt = `Create 3 multiple choice questions with answers:\n\n${textSample}`;
+
+        try {
+            const text = await callGeminiRaw(prompt);
+            docxAiResult.innerHTML = marked.parse(text);
+            docxAiResult.style.display = 'block';
+        } catch (error) {
+            docxAiResult.innerHTML = `<div class="text-danger small">Error: ${error.message}</div>`;
+            docxAiResult.style.display = 'block';
+        } finally {
+            docxAiLoading.classList.add('d-none');
+        }
+    }
+
+    // ==========================================
+    // TOOL 2: IMAGE TO JSON LOGIC
+    // ==========================================
+    const imgDropZone = document.getElementById('imgDropZone');
+    const imgInput = document.getElementById('imgInput');
+    const imgPreviewSection = document.getElementById('imgPreviewSection');
+    const imagePreview = document.getElementById('imagePreview');
+    const imgRemoveFile = document.getElementById('imgRemoveFile');
+    const imgAnalyzeBtn = document.getElementById('imgAnalyzeBtn');
+    const imgResultSection = document.getElementById('imgResultSection');
+    const jsonOutput = document.getElementById('jsonOutput');
+    const copyJsonBtn = document.getElementById('copyJsonBtn');
+    const imgSpinner = document.getElementById('imgSpinner');
+
+    let currentBase64 = null;
+    let currentMimeType = null;
+    let generatedJson = null;
+
+    // Image Event Listeners
+    imgDropZone.addEventListener('click', () => imgInput.click());
+    imgDropZone.addEventListener('dragover', (e) => { e.preventDefault(); imgDropZone.classList.add('dragover'); });
+    imgDropZone.addEventListener('dragleave', () => imgDropZone.classList.remove('dragover'));
+    imgDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        imgDropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleImageFile(e.dataTransfer.files[0]);
+    });
+    imgInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleImageFile(e.target.files[0]);
+    });
+    imgRemoveFile.addEventListener('click', resetImage);
+    imgAnalyzeBtn.addEventListener('click', analyzeImageWithAI);
+
+    copyJsonBtn.addEventListener('click', () => {
+        if (!generatedJson) return;
+        navigator.clipboard.writeText(JSON.stringify(generatedJson, null, 2));
+        const originalHtml = copyJsonBtn.innerHTML;
+        copyJsonBtn.innerHTML = '<i class="bi bi-check2"></i> Copied';
+        setTimeout(() => copyJsonBtn.innerHTML = originalHtml, 2000);
+    });
+
+    function handleImageFile(file) {
+        if (!file.type.startsWith('image/')) {
+            alert('Please select a valid image.');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            currentBase64 = e.target.result.split(',')[1];
+            currentMimeType = file.type;
+            imagePreview.src = e.target.result;
+            
+            imgDropZone.style.display = 'none';
+            imgPreviewSection.classList.remove('d-none');
+            imagePreview.style.display = 'inline-block';
+            imgResultSection.classList.add('d-none');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function resetImage() {
+        currentBase64 = null;
+        imgInput.value = '';
+        imgPreviewSection.classList.add('d-none');
+        imgDropZone.style.display = 'block';
+        imgResultSection.classList.add('d-none');
+    }
+
+    // Image Analysis (NOW CALLS NETLIFY FUNCTION)
+    async function analyzeImageWithAI() {
+        if (!currentBase64) return;
+        
+        imgAnalyzeBtn.disabled = true;
+        imgSpinner.classList.remove('d-none');
+        
+        const prompt = `Analyze this image and return a strictly valid JSON object. 
+        Schema: { "type": "image", "subject": "string", "color": "string", "mood": "string", "details": { "features": ["string"], "location": "string" } }`;
+
+        try {
+            // Call the secure Netlify function for image analysis
+            const response = await fetch('/.netlify/functions/gemini-image-proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    mimeType: currentMimeType,
+                    data: currentBase64
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                // The Netlify function returned an error (e.g., 429, 500)
+                throw new Error(data.error || 'AI Analysis Error (Check Console/API Key)');
+            }
+            
+            const rawText = data.text;
+            let cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+            
+            try {
+                generatedJson = JSON.parse(cleanJson);
+                jsonOutput.innerHTML = syntaxHighlight(generatedJson);
+            } catch (e) {
+                // Fallback if AI output is not strict JSON
+                jsonOutput.textContent = rawText; 
+            }
+            
+            imgResultSection.classList.remove('d-none');
+
+        } catch (error) {
+            console.error("Analysis Error:", error);
+            alert(error.message);
+        } finally {
+            imgAnalyzeBtn.disabled = false;
+            imgSpinner.classList.add('d-none');
+        }
+    }
+
+    // ==========================================
+    // HELPERS (Shared)
+    // ==========================================
+    
+    // Shared Gemini Text Call (NOW CALLS NETLIFY FUNCTION)
+    async function callGeminiRaw(prompt) {
+        // Call the secure Netlify function for text analysis
+        const response = await fetch(
+            '/.netlify/functions/gemini-text-proxy',
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt })
+            }
+        );
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'AI request failed.');
+        }
+
+        return data.text;
+    }
+
+    function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals < 0 ? 0 : decimals)) + ' ' + sizes[i];
+    }
+
+    function showStatus(message, type) {
+        statusMessage.textContent = message;
+        statusMessage.className = `alert alert-${type} status-message`;
+        statusMessage.style.display = 'block';
+    }
+
+    function syntaxHighlight(json) {
+        if (typeof json != 'string') json = JSON.stringify(json, undefined, 2);
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+            var cls = 'number';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) cls = 'key';
+                else cls = 'string';
+            } else if (/true|false/.test(match)) cls = 'boolean';
+            else if (/null/.test(match)) cls = 'null';
+            return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
+</script>
+ 
 </body>
 
 </html>
