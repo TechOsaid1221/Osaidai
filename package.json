@@ -1,0 +1,8 @@
+{
+  "name": "osaid-ai-tools-netlify-functions",
+  "version": "1.0.0",
+  "description": "Netlify functions for securing Gemini API calls.",
+  "dependencies": {
+    "@google/genai": "^0.13.0"
+  }
+}
